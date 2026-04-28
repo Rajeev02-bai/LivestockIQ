@@ -1,4 +1,6 @@
-🐄 Indian Cattle Breed Identifier
+🐄 LiveStockAI - LivestockIQ: An Intelligent Deep Learning Framework for
+Cattle Breed Classification with Voice Assistance and Digital Marketplace Integration
+
 
 An AI-powered web application for identifying Indian cattle breeds from images, providing detailed breed information, and facilitating cattle trading through a built-in marketplace.
 
