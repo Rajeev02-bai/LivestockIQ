@@ -1,4 +1,4 @@
-🐄 LiveStockAI - LivestockIQ: An Intelligent Deep Learning Framework for
+🐄 LiveStockIQ - LivestockIQ: An Intelligent Deep Learning Framework for
 Cattle Breed Classification with Voice Assistance and Digital Marketplace Integration
 
 
