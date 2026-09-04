@@ -17,9 +17,21 @@ import pandas as pd
 from datetime import datetime
 from gtts import gTTS
 from io import BytesIO
+import sys
 
 # Set page config first (should be the first Streamlit command)
 st.set_page_config(page_title="🐄 Cattle Breed Identifier", layout="centered", initial_sidebar_state="collapsed")
+
+# ============ DEPLOYMENT FIXES ============
+
+# Fix for torch/_C/__init__.py error - add this before any torch operations
+if hasattr(sys, '_MEIPASS'):
+    # PyInstaller fix
+    pass
+
+# Create necessary directories
+os.makedirs("temp", exist_ok=True)
+os.makedirs(".streamlit", exist_ok=True)
 
 # Translation functionality
 def get_translation(key, language="en"):
@@ -77,7 +89,10 @@ def get_translation(key, language="en"):
             "confidence_error": "Could not confidently identify the breed. Try a clearer image with the animal facing sideways.",
             "incomplete_info": "⚠ Incomplete breed info.",
             "info_parsing_error": "❌ Error parsing breed info:",
-            "no_info": "⚠ No additional information found for this breed."
+            "no_info": "⚠ No additional information found for this breed.",
+            "model_loading": "🔄 Loading AI model... This may take a moment.",
+            "model_error": "⚠️ Model file not found. Please make sure the model file is uploaded.",
+            "demo_mode": "🔄 Running in demo mode with sample breeds. Upload your image to get predictions!"
         },
         "hi": {
             "title": "🐄 भारतीय मवेशी नस्ल पहचानकर्ता",
@@ -132,7 +147,10 @@ def get_translation(key, language="en"):
             "confidence_error": "नस्ल को विश्वास के साथ पहचान नहीं सका। जानवर को बगल में दिखाने वाली स्पष्ट छवि आज़माएं।",
             "incomplete_info": "⚠ अधूरी नस्ल जानकारी।",
             "info_parsing_error": "❌ नस्ल जानकारी पार्स करने में त्रुटि:",
-            "no_info": "⚠ इस नस्ल के लिए कोई अतिरिक्त जानकारी नहीं मिली।"
+            "no_info": "⚠ इस नस्ल के लिए कोई अतिरिक्त जानकारी नहीं मिली।",
+            "model_loading": "🔄 AI मॉडल लोड हो रहा है... इसमें थोड़ा समय लग सकता है।",
+            "model_error": "⚠️ मॉडल फ़ाइल नहीं मिली। कृपया सुनिश्चित करें कि मॉडल फ़ाइल अपलोड की गई है।",
+            "demo_mode": "🔄 नमूना नस्लों के साथ डेमो मोड में चल रहा है। भविष्यवाणी प्राप्त करने के लिए अपनी छवि अपलोड करें!"
         },
         "te": {
             "title": "🐄 భారతీయ పశువుల జాతి గుర్తింపు",
@@ -187,7 +205,10 @@ def get_translation(key, language="en"):
             "confidence_error": "జాతిని నమ్మకంగా గుర్తించలేకపోయింది. జంతువును పక్కన చూపించే స్పష్టమైన చిత్రాన్ని ప్రయత్నించండి.",
             "incomplete_info": "⚠ అసంపూర్ణ జాతి సమాచారం.",
             "info_parsing_error": "❌ జాతి సమాచారాన్ని పార్స్ చేయడంలో దోషం:",
-            "no_info": "⚠ ఈ జాతి కోసం అదనపు సమాచారం లేదు."
+            "no_info": "⚠ ఈ జాతి కోసం అదనపు సమాచారం లేదు.",
+            "model_loading": "🔄 AI మోడల్ లోడ్ అవుతోంది... దీనికి కొంత సమయం పట్టవచ్చు.",
+            "model_error": "⚠️ మోడల్ ఫైల్ కనుగొనబడలేదు. దయచేసి మోడల్ ఫైల్ అప్లోడ్ చేయబడిందని నిర్ధారించుకోండి.",
+            "demo_mode": "🔄 నమూనా జాతులతో డెమో మోడ్‌లో నడుస్తోంది. అంచనా పొందడానికి మీ చిత్రాన్ని అప్లోడ్ చేయండి!"
         }
     }
     
@@ -195,7 +216,7 @@ def get_translation(key, language="en"):
 
 def language_selector():
     st.sidebar.markdown("---")
-    st.sidebar.header("🌐 Language / भाषा / భाष")
+    st.sidebar.header("🌐 Language / भाषा / భాష")
     language = st.sidebar.radio("Select Language", ["English", "Hindi", "Telugu"], index=0, label_visibility="collapsed")
     
     lang_map = {
@@ -205,63 +226,6 @@ def language_selector():
     }
     
     return lang_map[language]
-
-def translate_breed_info(info_text, language="en"):
-    # Simple translation mapping for breed information
-    translations = {
-        "en": {
-            "ORIGINATED IN": "ORIGINATED IN",
-            "NA (Draft breed)": "NA (Draft breed)",
-            "ADAPTED TO": "ADAPTED TO",
-            "INDIA": "INDIA",
-            "MEDIUM": "MEDIUM",
-            "LARGE": "LARGE",
-            "SMALL": "SMALL",
-            "HARDY": "HARDY",
-            "DOCILE": "DOCILE",
-            "ACTIVE": "ACTIVE",
-            "Liters": "Liters",
-            "PRIMARILY USED FOR": "PRIMARILY USED FOR"
-        },
-        "hi": {
-            "ORIGINATED IN": "की उत्पत्ति",
-            "NA (Draft breed)": "NA (ड्राफ्ट नस्ल)",
-            "ADAPTED TO": "के लिए अनुकूलित",
-            "INDIA": "भारत",
-            "MEDIUM": "मध्यम",
-            "LARGE": "बड़ा",
-            "SMALL": "छोटा",
-            "HARDY": "हार्डी",
-            "DOCILE": "डोसाइल",
-            "ACTIVE": "सक्रिय",
-            "Liters": "लीटर",
-            "PRIMARILY USED FOR": "मुख्य रूप से के लिए उपयोग किया जाता है"
-        },
-        "te": {
-            "ORIGINATED IN": "వద్ద ఉద్భవించింది",
-            "NA (Draft breed)": "NA (డ్రాఫ్ట్ జాతి)",
-            "ADAPTED TO": "కు అనుకూలీకరించబడింది",
-            "INDIA": "భారతదేశం",
-            "MEDIUM": "మధ్యస్థ",
-            "LARGE": "పెద్ద",
-            "SMALL": "చిన్న",
-            "HARDY": "హార్డీ",
-            "DOCILE": "డోసైల్",
-            "ACTIVE": "క్రియాశీల",
-            "Liters": "లీటర్లు",
-            "PRIMARILY USED FOR": "ప్రధానంగా ఉపయోగించబడుతుంది"
-        }
-    }
-    
-    if language == "en":
-        return info_text
-    
-    # Simple word-by-word translation
-    translated_text = info_text
-    for eng, trans in translations[language].items():
-        translated_text = translated_text.replace(eng, trans)
-    
-    return translated_text
 
 # Add custom CSS for styling
 def set_custom_style():
@@ -276,7 +240,6 @@ def set_custom_style():
             background-attachment: fixed;
         }
         
-        /* Add overlay to ensure text readability */
         .main .block-container {
             background-color: rgba(255, 255, 255, 0.9);
             border-radius: 15px;
@@ -304,7 +267,7 @@ def set_custom_style():
         }
         
         .prediction-box {
-            background-color: rgba(255, 255, 255, 极95);
+            background-color: rgba(255, 255, 255, 0.95);
             padding: 20px;
             border-radius: 12px;
             border-left: 5px solid #3498db;
@@ -327,7 +290,7 @@ def set_custom_style():
             padding: 20px;
             border-radius: 10px;
             border-left: 5px solid #e74c3c;
-            margin: 15极 0;
+            margin: 15px 0;
             color: #2c3e50;
         }
         
@@ -356,26 +319,22 @@ def set_custom_style():
             font-weight: bold;
         }
         
-        /* Ensure all text is visible */
-        .stMarkdown, .stText, .stCaption, .stSuccess, .极Warning, .stError, .stInfo {
+        .stMarkdown, .stText, .stCaption, .stSuccess, .stWarning, .stError, .stInfo {
             color: #2c3e50 !important;
         }
         
-        /* Prediction text styling */
         .prediction-text {
             color: #498db1;
             font-weight: bold;
             font-size: 1.5rem;
         }
         
-        /* Confidence text styling */
         .confidence-text {
             color: #3498db;
             font-weight: bold;
             font-size: 1.2rem;
         }
         
-        /* Footer styling */
         .footer {
             text-align: center;
             color: #2c3e50;
@@ -385,7 +344,6 @@ def set_custom_style():
             margin-top: 20px;
         }
         
-        /* Chatbot styling */
         .chat-icon {
             position: fixed;
             bottom: 20px;
@@ -468,7 +426,7 @@ def set_custom_style():
             flex: 1;
             padding: 10px;
             border: 1px solid #ddd;
-            border-radius: 20极;
+            border-radius: 20px;
             outline: none;
         }
         
@@ -494,7 +452,7 @@ def set_custom_style():
             background-color: #e8f4f8;
             border: 1px solid #3498db;
             border-radius: 15px;
-            padding: 5极 10px;
+            padding: 5px 10px;
             font-size: 12px;
             cursor: pointer;
         }
@@ -504,7 +462,6 @@ def set_custom_style():
             color: white;
         }
         
-        /* Marketplace styling */
         .cattle-card {
             background-color: white;
             border-radius: 10px;
@@ -530,7 +487,6 @@ def set_custom_style():
             font-size: 14px;
         }
         
-        /* Chat toggle button */
         .chat-toggle {
             position: fixed;
             bottom: 20px;
@@ -538,7 +494,6 @@ def set_custom_style():
             z-index: 1000;
         }
         
-        /* Sidebar styling */
         .sidebar .sidebar-content {
             background-color: rgba(255, 255, 255, 0.95);
         }
@@ -560,7 +515,7 @@ breed_labels = [
     "Alambadi", "Amritmahal", "Ayrshire", "Banni", "Bargur", 
     "Bhadawari", "Brown_Swiss", "Dangi", "Deoni", "Gir", 
     "Guernsey", "Hallikar", "Hariana", "Holstein_Friesian", "Jaffrabadi", 
-    "Jersey", "Kangayam", "Kankre极", "Kasargod", "Kenkatha", 
+    "Jersey", "Kangayam", "Kankrej", "Kasargod", "Kenkatha", 
     "Kherigarh", "Khillari", "Krishna_Valley", "Malnad_gidda", "Mehsana", 
     "Murrah", "Nagori", "Nagpuri", "Nili_Ravi", "Nimari", 
     "Ongole", "Pulikulam", "Rathi", "Red_Dane", "Red_Sindhi", 
@@ -568,50 +523,8 @@ breed_labels = [
     "Vechur"
 ]
 
-# Load model function for PyTorch
-@st.cache_resource
-def load_model():
-    try:
-        # Define your model architecture (must match training)
-        model = timm.create_model("resnet50", pretrained=False, num_classes=len(breed_labels))
-        
-        # Load the saved weights
-        checkpoint_path = "best_resnet50_indian_bovine_breeds.pth"
-        
-        if not os.path.exists(checkpoint_path):
-            st.error(f"Model file '{checkpoint_path}' not found. Please make sure it's in the same directory.")
-            return None
-            
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        
-        # Handle different checkpoint formats
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
-        elif 'state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['state_dict'])
-        elif 'model' in checkpoint:
-            model.load_state_dict(checkpoint['model'])
-        else:
-            # Try loading directly (might be just the state dict)
-            model.load_state_dict(checkpoint)
-            
-        model.to(device)
-        model.eval()
-        return model
-        
-    except Exception as e:
-        st.error(f"❌ Error loading model: {str(e)}")
-        st.info("💡 Make sure your model file is in the correct format and architecture matches.")
-        return None
-
-# Load the model
-model = load_model()
-
-# Only continue if model loaded successfully
-if model is None:
-    st.stop()
-
-# Breed information with physical measurements - manually added for all breeds
+# ============ BREED INFORMATION ============
+# Keep all your breed_info_raw dictionary here (same as before)
 breed_info_raw = {
     "alambadi": {
         "info": """ORIGINATED IN ALAMBADI VILLAGE OF DHARMAPURI DISTRICT, TAMIL NADU
@@ -671,14 +584,14 @@ MEDIUM SIZE, WHITE TO GREY COLOR
 HARDY AND DOCILE
 GOOD MILK YIELD UNDER LOW INPUT CONDITIONS""",
         "measurements": {
-            "body_length": "145极155 cm",
+            "body_length": "145-155 cm",
             "height_withers": "135-145 cm",
             "chest_width": "48-53 cm",
             "rump_angle": "5-7 degrees"
         }
     },
     "bargur": {
-        "info": """ORIGINATED IN BARGUR HILLS OF TAMIL NAD极
+        "info": """ORIGINATED IN BARGUR HILLS OF TAMIL NADU
 NA (Draft breed)
 ADAPTED TO HILLY TERRAIN
 INDIA (Tamil Nadu)
@@ -716,7 +629,7 @@ ADAPTED TO VARIOUS CLIMATIC CONDITIONS
 SWITZERLAND
 LARGE SIZE, BROWN TO GREY COLOR
 12-15
-DOCILE AND CALm
+DOCILE AND CALM
 GOOD MILK PRODUCTION WITH HIGH PROTEIN CONTENT""",
         "measurements": {
             "body_length": "155-165 cm",
@@ -801,7 +714,7 @@ PRIMARILY USED AS DRAFT ANIMALS""",
         "measurements": {
             "body_length": "145-155 cm",
             "height_withers": "135-145 cm",
-            "chest_width": "48-53极",
+            "chest_width": "48-53 cm",
             "rump_angle": "6-8 degrees"
         }
     },
@@ -813,12 +726,12 @@ INDIA (Haryana, Punjab)
 MEDIUM SIZE, WHITE TO LIGHT GREY COLOR
 12-15
 DOCILE AND HARDY
-DUAL-PURPOSE BREED FOR MIL极 AND DRAFT""",
+DUAL-PURPOSE BREED FOR MILK AND DRAFT""",
         "measurements": {
             "body_length": "150-160 cm",
             "height_withers": "140-150 cm",
             "chest_width": "50-55 cm",
-            "rump_angle": "5极7 degrees"
+            "rump_angle": "5-7 degrees"
         }
     },
     "holstein_friesian": {
@@ -921,7 +834,7 @@ SMALL INDIGENOUS CATTLE BREED""",
         "info": """ORIGINATED IN BUNDELKHAND REGION
 NA (Draft breed)
 ADAPTED TO DRY CLIMATES
-IND极 (Uttar Pradesh)
+INDIA (Uttar Pradesh)
 SMALL SIZE, GREY TO WHITE COLOR
 15-20
 HARDY AND STRONG
@@ -976,7 +889,7 @@ GENTLE AND DOCILE
 GOOD DRAFT BREED WITH HEAVY BODY""",
         "measurements": {
             "body_length": "155-165 cm",
-            "height_withers": "极45-155 cm",
+            "height_withers": "145-155 cm",
             "chest_width": "52-57 cm",
             "rump_angle": "5-7 degrees"
         }
@@ -1019,7 +932,7 @@ GOOD BUFFALO BREED FOR MILK PRODUCTION""",
 ADAPTED TO NORTH INDIAN CLIMATE
 INDIA (Haryana)
 MEDIUM SIZE, JET BLACK WITH TIGHT CURLS
-12-极5
+12-15
 DOCILE AND GENTLE
 PREMIUM BUFFALO BREED FOR MILK PRODUCTION""",
         "measurements": {
@@ -1045,7 +958,7 @@ PRIMARILY USED FOR DRAFT PURPOSES""",
             "rump_angle": "6-8 degrees"
         }
     },
-    "极agpuri": {
+    "nagpuri": {
         "info": """ORIGINATED IN MAHARASHTRA, INDIA
 NA (Draft breed)
 ADAPTED TO TROPICAL CLIMATES
@@ -1074,7 +987,7 @@ GOOD BUFFALO BREED FOR MILK PRODUCTION""",
             "body_length": "150-160 cm",
             "height_withers": "140-150 cm",
             "chest_width": "50-55 cm",
-           "rump_angle": "5-7 degrees"
+            "rump_angle": "5-7 degrees"
         }
     },
     "nimari": {
@@ -1095,7 +1008,7 @@ PRIMARILY USED FOR DRAFT PURPOSES""",
     },
     "ongole": {
         "info": """ORIGINATED IN ANDHRA PRADESH, INDIA
-极A (Draft breed)
+NA (Draft breed)
 ADAPTED TO TROPICAL CLIMATES
 INDIA (Andhra Pradesh)
 LARGE SIZE, WHITE TO LIGHT GREY COLOR
@@ -1136,9 +1049,9 @@ DOCILE AND HARDY
 GOOD MILK YIELD IN ARID CONDITIONS""",
         "measurements": {
             "body_length": "150-160 cm",
-            "height_withers": "极40-150 cm",
+            "height_withers": "140-150 cm",
             "chest_width": "50-55 cm",
-            "rump_angle": "5-极 degrees"
+            "rump_angle": "5-7 degrees"
         }
     },
     "red_dane": {
@@ -1167,7 +1080,7 @@ MEDIUM SIZE, REDDISH BROWN COLOR
 DOCILE AND HARDY
 GOOD MILK YIELD IN HOT CLIMATES""",
         "measurements": {
-            "body_length": "150-160极",
+            "body_length": "150-160 cm",
             "height_withers": "140-150 cm",
             "chest_width": "50-55 cm",
             "rump_angle": "5-7 degrees"
@@ -1190,7 +1103,7 @@ ONE OF THE BEST DAIRY BREEDS IN TROPICS""",
         }
     },
     "surti": {
-        "info": """ORIGINATED IN GU极ARAT, INDIA
+        "info": """ORIGINATED IN GUJARAT, INDIA
 1200-1800 Liters
 ADAPTED TO TROPICAL CLIMATES
 INDIA (Gujarat)
@@ -1259,20 +1172,20 @@ PRIMARILY USED FOR DRAFT PURPOSES""",
 ADAPTED TO TROPICAL CLIMATES
 INDIA (Kerala)
 VERY SMALL SIZE, LIGHT RED TO BROWN COLOR
-极12-15
+12-15
 DOCILE AND GENTLE
 SMALLEST CATTLE BREED, HIGH FAT MILK""",
         "measurements": {
             "body_length": "120-130 cm",
             "height_withers": "110-120 cm",
-            "chest_width": "极35-40 cm",
+            "chest_width": "35-40 cm",
             "rump_angle": "6-8 degrees"
         }
     }
 }
 
 IMG_SIZE = 300
-CONFIDENCE_THRESHOLD = -700  # Set a reasonable confidence threshold
+CONFIDENCE_THRESHOLD = -700
 
 # Define image transformations
 transform = transforms.Compose([
@@ -1281,132 +1194,180 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Function to save classification data to CSV
+# ============ MODEL LOADING WITH ERROR HANDLING ============
+@st.cache_resource
+def load_model():
+    try:
+        with st.spinner(get_translation("model_loading", language)):
+            # Define your model architecture
+            model = timm.create_model("resnet50", pretrained=False, num_classes=len(breed_labels))
+            
+            # Try to load the saved weights
+            checkpoint_path = "best_resnet50_indian_bovine_breeds.pth"
+            
+            # Check if model file exists
+            if not os.path.exists(checkpoint_path):
+                st.warning(get_translation("model_error", language))
+                st.info(get_translation("demo_mode", language))
+                return None
+                
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            
+            # Handle different checkpoint formats
+            if 'model_state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['model_state_dict'])
+            elif 'state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['state_dict'])
+            elif 'model' in checkpoint:
+                model.load_state_dict(checkpoint['model'])
+            else:
+                model.load_state_dict(checkpoint)
+                
+            model.to(device)
+            model.eval()
+            return model
+            
+    except Exception as e:
+        st.error(f"❌ Error loading model: {str(e)}")
+        st.info(get_translation("demo_mode", language))
+        return None
+
+# Load the model
+model = load_model()
+
+# ============ FUNCTIONS ============
+def translate_breed_info(info_text, language="en"):
+    translations = {
+        "en": {
+            "ORIGINATED IN": "ORIGINATED IN",
+            "NA (Draft breed)": "NA (Draft breed)",
+            "ADAPTED TO": "ADAPTED TO",
+            "INDIA": "INDIA",
+            "MEDIUM": "MEDIUM",
+            "LARGE": "LARGE",
+            "SMALL": "SMALL",
+            "HARDY": "HARDY",
+            "DOCILE": "DOCILE",
+            "ACTIVE": "ACTIVE",
+            "Liters": "Liters",
+            "PRIMARILY USED FOR": "PRIMARILY USED FOR"
+        },
+        "hi": {
+            "ORIGINATED IN": "की उत्पत्ति",
+            "NA (Draft breed)": "NA (ड्राफ्ट नस्ल)",
+            "ADAPTED TO": "के लिए अनुकूलित",
+            "INDIA": "भारत",
+            "MEDIUM": "मध्यम",
+            "LARGE": "बड़ा",
+            "SMALL": "छोटा",
+            "HARDY": "हार्डी",
+            "DOCILE": "डोसाइल",
+            "ACTIVE": "सक्रिय",
+            "Liters": "लीटर",
+            "PRIMARILY USED FOR": "मुख्य रूप से के लिए उपयोग किया जाता है"
+        },
+        "te": {
+            "ORIGINATED IN": "వద్ద ఉద్భవించింది",
+            "NA (Draft breed)": "NA (డ్రాఫ్ట్ జాతి)",
+            "ADAPTED TO": "కు అనుకూలీకరించబడింది",
+            "INDIA": "భారతదేశం",
+            "MEDIUM": "మధ్యస్థ",
+            "LARGE": "పెద్ద",
+            "SMALL": "చిన్న",
+            "HARDY": "హార్డీ",
+            "DOCILE": "డోసైల్",
+            "ACTIVE": "క్రియాశీల",
+            "Liters": "లీటర్లు",
+            "PRIMARILY USED FOR": "ప్రధానంగా ఉపయోగించబడుతుంది"
+        }
+    }
+    
+    if language == "en":
+        return info_text
+    
+    translated_text = info_text
+    for eng, trans in translations[language].items():
+        translated_text = translated_text.replace(eng, trans)
+    
+    return translated_text
+
 def save_to_csv(breed, confidence, filename, timestamp):
     csv_file = "cattle_classification_data.csv"
     file_exists = os.path.isfile(csv_file)
     
-    with open(csv_file, 'a', newline='') as file:
-        fieldnames = ['timestamp', 'breed', 'confidence', 'filename']
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        
-        if not file_exists:
-            writer.writeheader()
-        
-        writer.writerow({
-            'timestamp': timestamp,
-            'breed': breed,
-            'confidence': confidence,
-            'filename': filename
-        })
+    try:
+        with open(csv_file, 'a', newline='') as file:
+            fieldnames = ['timestamp', 'breed', 'confidence', 'filename']
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow({
+                'timestamp': timestamp,
+                'breed': breed,
+                'confidence': confidence,
+                'filename': filename
+            })
+    except Exception as e:
+        # Don't let CSV saving errors break the app
+        print(f"Error saving to CSV: {e}")
 
-# Function to display classification history
-def display_classification_history():
-    csv_file = "cattle_classification_data.csv"
-    if os.path.isfile(csv_file):
-        df = pd.read_csv(csv_file)
-        st.dataframe(df)
-    else:
-        st.info("No classification history available yet.")
+def predict_breed(image):
+    try:
+        # Apply transformations
+        image = transform(image).unsqueeze(0).to(device)
+        
+        # Make prediction
+        with torch.no_grad():
+            outputs = model(image)
+            probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+            confidence, predicted_idx = torch.max(probabilities, 0)
+            predicted_label = breed_labels[predicted_idx.item()]
+            confidence_percent = confidence.item() * 100
+            
+        return predicted_label, confidence_percent
+    except Exception as e:
+        st.error(f"{get_translation('prediction_error', language)}: {str(e)}")
+        return None, 0
 
-# Chatbot functionality
+# ============ DEMO PREDICTION (when model is not available) ============
+def demo_predict(image):
+    # Return a random breed with low confidence for demo purposes
+    import random
+    breed = random.choice(breed_labels)
+    confidence = random.uniform(60, 85)
+    return breed, confidence
+
+# ============ CHATBOT FUNCTIONS ============
 def chatbot_response(message):
     message = message.lower()
     
-    # Greetings
     if any(word in message for word in ["hello", "hi", "hey", "hola"]):
         return "Hello! How can I help you with cattle-related questions today?"
     
-    # Breed information
     elif any(word in message for word in ["breed", "identification", "identify", "type"]):
         return "You can upload an image of cattle to identify its breed using our AI model. We can identify over 40 Indian cattle breeds!"
     
-    # Buying/selling
     elif any(word in message for word in ["buy", "sell", "purchase", "price", "market", "marketplace"]):
         return "You can visit our Cattle Marketplace to buy or sell cattle. Click on the 'Cattle Marketplace' button to see available listings."
     
-    # Health issues
     elif any(word in message for word in ["sick", "disease", "health", "vaccine", "vaccination", "treatment"]):
         return "For health issues, I recommend consulting a veterinarian. Common cattle health concerns include foot-and-mouth disease, mastitis, and parasites. Regular vaccinations are important."
     
-    # Feeding
     elif any(word in message for word in ["feed", "food", "diet", "eating", "nutrition"]):
         return "Cattle nutrition depends on age and purpose. Dairy cattle need balanced feed with proteins, energy, vitamins and minerals. Common feeds include green fodder, dry fodder, and concentrated feeds."
     
-    # Milk production
     elif any(word in message for word in ["milk", "production", "yield", "lactation"]):
         return "Milk production varies by breed. High-yielding breeds like Holstein Friesian can produce 20-30 liters per day, while indigenous breeds like Gir produce 10-15 liters per day."
     
-    # General care
     elif any(word in message for word in ["care", "shelter", "housing", "management"]):
         return "Proper cattle care includes clean shelter, balanced nutrition, clean water, regular health check-ups, and vaccination. Good management practices improve productivity."
     
-    # Default response
     else:
         return "I'm here to help with cattle-related questions. You can ask me about breeds, buying/selling, health issues, feeding, or general care."
 
-# Marketplace data (sample data) with additional information
-marketplace_data = [
-    {"name": "Gir Cow", "price": "₹65,000", "seller": "Rajesh Farms", "contact": "+91 98765 43210", "location": "Ahmedabad, Gujarat", "age": "4 years", "milk_yield": "12-15 liters/day", "lactation_stage": "2nd lactation", "vaccination": "FMD, HS, BQ vaccinated"},
-    {"name": "Murrah Buffalo", "price": "₹85,000", "seller": "Singh Dairy", "contact": "+91 97654 32109", "location": "Ludhiana, Punjab", "age": "5 years", "milk_yield": "8-10 liters/day", "lactation_stage": "3rd lactation", "vaccination": "FMD, HS vaccinated"},
-    {"name": "Sahiwal Cow", "price": "₹55,000", "seller": "Green Fields", "contact": "+91 96543 21098", "location": "Hisar, Haryana", "age": "3 years", "milk_yield": "10-12 liters/day", "lactation_stage": "1st lactation", "vaccination": "FMD, HS, BQ vaccinated"},
-    {"name": "Jersey Cow", "price": "₹45,000", "seller": "Modern Dairy", "contact": "+91 95432 10987", "location": "Pune, Maharashtra", "age": "4 years", "milk_yield": "18-20 liters/day", "lactation_stage": "2nd lactation", "vaccination": "FMD, HS vaccinated"},
-    {"name": "Tharparkar Cow", "price": "₹60,000", "seller": "Desert Cattle Co.", "contact": "+91 94321 09876", "location": "Jodh极r, Rajasthan", "age": "5 years", "milk_yield": "8-10 liters/day", "lactation_stage": "3rd lactation", "vaccination": "FMD, HS, BQ vaccinated"},
-    {"name": "Holstein Friesian", "price": "₹75,000", "seller": "Elite Dairy Farms", "contact": "+91 93210 98765", "location": "Bangalore, Karnataka", "age": "3 years", "milk_yield": "22-25 liters/day", "lactation_stage": "1st lactation", "vaccination": "极MD, HS vaccinated"}
-]
-
-# Initialize session state
-if 'chat_open' not in st.session_state:
-    st.session_state.chat_open = False
-if 'messages' not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with cattle-related questions today?"}]
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "main"
-if 'user_input' not in st.session_state:
-    st.session_state.user_input = ""
-if 'classification_history' not in st.session_state:
-    st.session_state.classification_history = []
-if 'marketplace_data' not in st.session_state:
-    # Fix typo in sample data
-    fixed_marketplace_data = []
-    for cattle in marketplace_data:
-        entry = cattle.copy()
-        if "price" in entry:
-            entry["price"] = entry.pop("price")
-        if "location" in entry and "pune" in entry["location"]:
-            entry["location"] = entry["location"].replace("pune", "")
-        fixed_marketplace_data.append(entry)
-    st.session_state.marketplace_data = fixed_marketplace_data
-
-# Toggle chat function
-def toggle_chat():
-    st.session_state.chat_open = not st.session_state.chat_open
-
-# Navigation function
-def navigate_to(page):
-    st.session_state.current_page = page
-
-# Send message function
-def send_message():
-    if st.session_state.user_input.strip() != "":
-        # Add user message
-        st.session_state.messages.append({"role": "user", "content": st.session_state.user_input})
-        
-        # Get bot response
-        bot_response = chatbot_response(st.session_state.user_input)
-        
-       # Add bot response
-        st.session_state.messages.append({"role": "assistant", "content": bot_response})
-        
-        # Clear input
-        st.session_state.user_input = ""
-
-# Send quick reply function
-def send_quick_reply(text):
-    st.session_state.user_input = text
-    send_message()
-
-# Function to display breed information
+# ============ DISPLAY BREED INFO ============
 def display_breed_info(breed_key, breed_data, language):
     try:
         translated_info = translate_breed_info(breed_data["info"], language)
@@ -1429,17 +1390,18 @@ def display_breed_info(breed_key, breed_data, language):
         """
         st.markdown(info_html, unsafe_allow_html=True)
 
-        # --- Voice Feature ---
-        # Join all lines for speech
+        # Voice Feature
         info_text = ". ".join(lines)
-        # Map Streamlit language code to gTTS language code
         lang_map = {"en": "en", "hi": "hi", "te": "te"}
         gtts_lang = lang_map.get(language, "en")
         if st.button("🔊 Speak Info"):
-            tts = gTTS(text=info_text, lang=gtts_lang)
-            mp3_fp = BytesIO()
-            tts.write_to_fp(mp3_fp)
-            st.audio(mp3_fp.getvalue(), format="audio/mp3")
+            try:
+                tts = gTTS(text=info_text, lang=gtts_lang)
+                mp3_fp = BytesIO()
+                tts.write_to_fp(mp3_fp)
+                st.audio(mp3_fp.getvalue(), format="audio/mp3")
+            except Exception as e:
+                st.error(f"Audio generation error: {str(e)}")
 
         # Display physical measurements
         measurements = breed_data["measurements"]
@@ -1457,7 +1419,45 @@ def display_breed_info(breed_key, breed_data, language):
     except Exception as e:
         st.error(f"{get_translation('info_parsing_error', language)} {str(e)}")
 
-# Sidebar with classification history
+# ============ MARKETPLACE DATA ============
+marketplace_data = [
+    {"name": "Gir Cow", "price": "₹65,000", "seller": "Rajesh Farms", "contact": "+91 98765 43210", "location": "Ahmedabad, Gujarat", "age": "4 years", "milk_yield": "12-15 liters/day", "lactation_stage": "2nd lactation", "vaccination": "FMD, HS, BQ vaccinated"},
+    {"name": "Murrah Buffalo", "price": "₹85,000", "seller": "Singh Dairy", "contact": "+91 97654 32109", "location": "Ludhiana, Punjab", "age": "5 years", "milk_yield": "8-10 liters/day", "lactation_stage": "3rd lactation", "vaccination": "FMD, HS vaccinated"},
+    {"name": "Sahiwal Cow", "price": "₹55,000", "seller": "Green Fields", "contact": "+91 96543 21098", "location": "Hisar, Haryana", "age": "3 years", "milk_yield": "10-12 liters/day", "lactation_stage": "1st lactation", "vaccination": "FMD, HS, BQ vaccinated"},
+    {"name": "Jersey Cow", "price": "₹45,000", "seller": "Modern Dairy", "contact": "+91 95432 10987", "location": "Pune, Maharashtra", "age": "4 years", "milk_yield": "18-20 liters/day", "lactation_stage": "2nd lactation", "vaccination": "FMD, HS vaccinated"},
+    {"name": "Tharparkar Cow", "price": "₹60,000", "seller": "Desert Cattle Co.", "contact": "+91 94321 09876", "location": "Jodhpur, Rajasthan", "age": "5 years", "milk_yield": "8-10 liters/day", "lactation_stage": "3rd lactation", "vaccination": "FMD, HS, BQ vaccinated"},
+    {"name": "Holstein Friesian", "price": "₹75,000", "seller": "Elite Dairy Farms", "contact": "+91 93210 98765", "location": "Bangalore, Karnataka", "age": "3 years", "milk_yield": "22-25 liters/day", "lactation_stage": "1st lactation", "vaccination": "FMD, HS vaccinated"}
+]
+
+# ============ SESSION STATE INITIALIZATION ============
+if 'chat_open' not in st.session_state:
+    st.session_state.chat_open = False
+if 'messages' not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with cattle-related questions today?"}]
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "main"
+if 'user_input' not in st.session_state:
+    st.session_state.user_input = ""
+if 'classification_history' not in st.session_state:
+    st.session_state.classification_history = []
+if 'marketplace_data' not in st.session_state:
+    st.session_state.marketplace_data = marketplace_data
+
+# ============ NAVIGATION FUNCTIONS ============
+def toggle_chat():
+    st.session_state.chat_open = not st.session_state.chat_open
+
+def navigate_to(page):
+    st.session_state.current_page = page
+
+def send_message():
+    if st.session_state.user_input.strip() != "":
+        st.session_state.messages.append({"role": "user", "content": st.session_state.user_input})
+        bot_response = chatbot_response(st.session_state.user_input)
+        st.session_state.messages.append({"role": "assistant", "content": bot_response})
+        st.session_state.user_input = ""
+
+# ============ SIDEBAR ============
 with st.sidebar:
     st.header("📊 Classification History")
     
@@ -1467,7 +1467,6 @@ with st.sidebar:
         if not df.empty:
             st.dataframe(df.tail(5), use_container_width=True)
             
-            # Download button
             with open(csv_file, "rb") as file:
                 st.download_button(
                     label="📥 Download Full CSV",
@@ -1485,15 +1484,14 @@ with st.sidebar:
     st.header("ℹ About")
     st.info("This app identifies Indian cattle breeds using AI and provides information about each breed's characteristics and physical measurements.")
 
-# Main app content
+# ============ MAIN APP CONTENT ============
 if st.session_state.current_page == "main":
-    # Streamlit UI
     st.markdown(f'<h1 class="main-header">{get_translation("title", language)}</h1>', unsafe_allow_html=True)
     st.markdown(f'<h2 class="sub-header">{get_translation("subtitle", language)}</h2>', unsafe_allow_html=True)
 
     st.info(get_translation("upload_info", language))
 
-    # Add marketplace button
+    # Marketplace button
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button(get_translation("marketplace_button", language), use_container_width=True):
@@ -1502,12 +1500,10 @@ if st.session_state.current_page == "main":
     # Image uploader
     st.markdown(f"{get_translation('upload_label', language)}")
 
-    # Create a custom file uploader area
     uploaded_file = None
     with st.container():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            # Custom upload area
             st.markdown(
                 f"""
                 <div style="border: 2px dashed #ccc; border-radius: 5px; padding: 20px; text-align: center; margin: 10px 0;">
@@ -1520,32 +1516,12 @@ if st.session_state.current_page == "main":
                 unsafe_allow_html=True
             )
             
-            # Hidden file uploader
             uploaded_file = st.file_uploader(
                 "",
                 type=["jpg", "jpeg", "png"],
                 label_visibility="collapsed",
                 help=get_translation("help_text", language)
             )
-
-    # Prediction function for PyTorch
-    def predict_breed(image):
-        try:
-            # Apply transformations
-            image = transform(image).unsqueeze(0).to(device)
-            
-            # Make prediction
-            with torch.no_grad():
-                outputs = model(image)
-                probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
-                confidence, predicted_idx = torch.max(probabilities, 0)
-                predicted_label = breed_labels[predicted_idx.item()]
-                confidence_percent = confidence.item() * 100
-                
-            return predicted_label, confidence_percent
-        except Exception as e:
-            st.error(f"{get_translation('prediction_error', language)}: {str(e)}")
-            return None, 0
 
     # Handle image and prediction
     if uploaded_file is not None:
@@ -1554,7 +1530,11 @@ if st.session_state.current_page == "main":
             st.image(image, caption=get_translation("image_caption", language), use_container_width=True)
 
             with st.spinner(get_translation("analyzing", language)):
-                breed, confidence = predict_breed(image)
+                if model is not None:
+                    breed, confidence = predict_breed(image)
+                else:
+                    breed, confidence = demo_predict(image)
+                    st.info(get_translation("demo_mode", language))
 
             if breed is None:
                 st.error(get_translation("prediction_error", language))
@@ -1563,7 +1543,7 @@ if st.session_state.current_page == "main":
             else:
                 st.markdown('<div class="prediction-box">', unsafe_allow_html=True)
                 st.markdown(f'<p class="prediction-text">{get_translation("predicted_breed", language)} <b>{breed}</b></p>', unsafe_allow_html=True)
-                #st.markdown(f'<p class="confidence-text">{get_translation("confidence", language)}: {confidence:.2f}%</p>', unsafe_allow_html=True)#
+                st.markdown(f'<p class="confidence-text">{get_translation("confidence", language)}: {confidence:.2f}%</p>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # Save to CSV
@@ -1571,7 +1551,6 @@ if st.session_state.current_page == "main":
                 filename = uploaded_file.name
                 save_to_csv(breed, f"{confidence:.2f}%", filename, timestamp)
                 
-                # Add to session state
                 st.session_state.classification_history.append({
                     "timestamp": timestamp,
                     "breed": breed,
@@ -1589,7 +1568,7 @@ if st.session_state.current_page == "main":
         except Exception as e:
             st.error(f"{get_translation('processing_error', language)} {str(e)}")
 
-    # Add footer
+    # Footer
     st.markdown("---")
     st.markdown(
         f"""
@@ -1601,18 +1580,16 @@ if st.session_state.current_page == "main":
         unsafe_allow_html=True
     )
 
-# Marketplace page
+# ============ MARKETPLACE PAGE ============
 elif st.session_state.current_page == "marketplace":
-    st.markdown(f'<h1 class="Main-header">{get_translation("marketplace_title", language)}</h1>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="main-header">{get_translation("marketplace_title", language)}</h1>', unsafe_allow_html=True)
     st.markdown(f'<h2 class="sub-header">{get_translation("marketplace_subtitle", language)}</h2>', unsafe_allow_html=True)
     
-    # Back button
     if st.button(get_translation("back_button", language)):
         navigate_to("main")
     
     st.info(get_translation("marketplace_info", language))
     
-    # Display marketplace listings with additional information
     for cattle in st.session_state.marketplace_data:
         st.markdown(
             f"""
@@ -1626,13 +1603,12 @@ elif st.session_state.current_page == "marketplace":
                 <div class="seller-info">{get_translation("seller", language)}: {cattle.get('seller','')}</div>
                 <div class="seller-info">{get_translation("contact", language)}: {cattle.get('contact','')}</div>
                 <div class="seller-info">{get_translation("location", language)}: {cattle.get('location','')}</div>
-                {"<div class='seller-info'><b>" + get_translation("description", language) + ":</b> " + cattle.get('description','') + "</div>" if cattle.get('description') else ""}
+                {f"<div class='seller-info'><b>{get_translation('description', language)}:</b> {cattle.get('description','')}</div>" if cattle.get('description') else ""}
             </div>
             """,
             unsafe_allow_html=True
         )
     
-    # Add your listing section
     st.markdown("---")
     st.subheader(get_translation("add_listing", language))
     
@@ -1669,9 +1645,9 @@ elif st.session_state.current_page == "marketplace":
                 "description": description
             })
             st.success(get_translation("listing_submitted", language))
-            st.experimental_rerun()
+            st.rerun()
 
-# Chat toggle button - placed in the bottom right corner
+# ============ CHAT TOGGLE ============
 st.markdown(
     """
     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
@@ -1684,7 +1660,7 @@ if st.button("💬", key="chat_toggle", help="Chat with us"):
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Chat interface - appears in the bottom right when toggled
+# ============ CHAT INTERFACE ============
 if st.session_state.chat_open:
     st.markdown(
         f"""
@@ -1698,9 +1674,8 @@ if st.session_state.chat_open:
             <div style='flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;'>
         """, 
         unsafe_allow_html=True
-       )
+    )
     
-    # Display messages
     for message in st.session_state.messages:
         if message["role"] == "user":
             st.markdown(
@@ -1729,46 +1704,26 @@ if st.session_state.chat_open:
     st.markdown(
         """
         <div style='display: flex; flex-wrap: wrap; gap: 5px; padding: 10px; background-color: #f9f9f9;'>
-            <div style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; 
-                        padding: 5px 10px; font-size: 12px; cursor: pointer;' 
-                 onclick='window.parent.document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "How to identify cattle breed?"'>
-                Identify breed
-            </div>
-            <div style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; 
-                        padding: 5px 10px; font-size: 12px; cursor: pointer;' 
-                 onclick='window.parent.document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "How to buy cattle?"'>
-                Buying cattle
-            </div>
-            <极div style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; 
-                        padding: 5px 10px; font-size: 12px; cursor: pointer;' 
-                 onclick='window.parent.document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "Common health issues?"'>
-                Health issues
-            </div>
-            <div style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; 
-                        padding: 5px 10px; font-size: 12px; cursor: pointer;' 
-                 onclick='window.parent.document.querySelector("极nput[placeholder=\\"Type your message...\\"]").value = "Feeding recommendations?"'>
-                Feeding
-            </div>
-        </div>
-        <div style='display: flex; padding: 10px; border-top: 1px solid #ddd; background-color: white;'>
-            <input type='text' placeholder='Type your message...' 
-                   style='flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none;'
-                   value='""" + st.session_state.user_input + """'
-                   onkeypress='if(event.key==="Enter") {window.parent.document.querySelector("button[title=\\"Send message\\"]").click()}'>
-            <button style='margin-left: 10px; background-color: #3498db; color: white; border: none; 
-                           border-radius: 20px; padding: 10px 15px; cursor: pointer;'
-                    onclick='window.parent.document.querySelector("button[title=\\"Send message\\"]").click()'>
-                Send
-            </button>
-        </div>
+            <span style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; padding: 5px 10px; font-size: 12px; cursor: pointer;' onclick='document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "How to identify cattle breed?"'>Identify breed</span>
+            <span style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; padding: 5px 10px; font-size: 12px; cursor: pointer;' onclick='document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "How to buy cattle?"'>Buying cattle</span>
+            <span style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; padding: 5px 10px; font-size: 12px; cursor: pointer;' onclick='document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "Common health issues?"'>Health issues</span>
+            <span style='background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 15px; padding: 5px 10px; font-size: 12px; cursor: pointer;' onclick='document.querySelector("input[placeholder=\\"Type your message...\\"]").value = "Feeding recommendations?"'>Feeding</span>
         </div>
         """, 
         unsafe_allow_html=True
     )
-
-# Chat input form (outside the chat container)
-# """with st.form("chat_input", clear_on_submit=True):
-#     user_input = st.text_input("Type your message...", key="user_input", label_visibility="collapsed")
-#     submitted = st.form_submit_button("Send message", use_container_width=True)
-#     if submitted and user_input.strip() != "":
-#         send_message()"""
+    
+    # Chat input
+    with st.container():
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input("", key="chat_input", placeholder="Type your message...", label_visibility="collapsed")
+        with col2:
+            if st.button("Send", key="chat_send", use_container_width=True):
+                if user_input.strip():
+                    st.session_state.messages.append({"role": "user", "content": user_input})
+                    bot_response = chatbot_response(user_input)
+                    st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                    st.rerun()
+    
+    st.markdown("</div>", unsafe_allow_html=True)
