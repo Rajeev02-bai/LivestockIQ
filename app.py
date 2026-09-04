@@ -12,6 +12,7 @@ import pandas as pd
 from datetime import datetime
 from io import BytesIO
 import random
+from huggingface_hub import hf_hub_download
 
 # Set page config first
 st.set_page_config(page_title="🐄 Cattle Breed Identifier", layout="centered", initial_sidebar_state="collapsed")
@@ -424,30 +425,39 @@ transform = transforms.Compose([
 def load_model():
     try:
         with st.spinner(get_translation("model_loading", language)):
-            model = timm.create_model("resnet50", pretrained=False, num_classes=len(breed_labels))
-            checkpoint_path = "best_resnet50_indian_bovine_breeds.pth"
-            
-            if not os.path.exists(checkpoint_path):
-                st.warning(get_translation("model_error", language))
-                return None
-                
-            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-            
-            if 'model_state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['model_state_dict'])
-            elif 'state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['state_dict'])
+
+            model = timm.create_model(
+                "resnet50",
+                pretrained=False,
+                num_classes=len(breed_labels)
+            )
+
+            model_path = hf_hub_download(
+                repo_id="YOUR_USERNAME/YOUR_HF_REPO",
+                filename="best_resnet50_indian_bovine_breeds.pth"
+            )
+
+            checkpoint = torch.load(
+                model_path,
+                map_location="cpu",
+                weights_only=False
+            )
+
+            if "model_state_dict" in checkpoint:
+                model.load_state_dict(checkpoint["model_state_dict"])
+            elif "state_dict" in checkpoint:
+                model.load_state_dict(checkpoint["state_dict"])
             else:
                 model.load_state_dict(checkpoint)
-                
+
             model.to(device)
             model.eval()
-            return model
-    except Exception as e:
-        st.warning(f"Model loading error: {str(e)[:100]}")
-        return None
 
-model = load_model()
+            return model
+
+    except Exception as e:
+        st.warning(f"Model loading error: {str(e)[:200]}")
+        return None
 
 # ============ PREDICTION FUNCTIONS ============
 def predict_breed(image):
